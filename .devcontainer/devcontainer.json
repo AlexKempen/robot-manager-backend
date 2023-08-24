@@ -3,11 +3,6 @@
 {
 	"name": "Linux",
 	"dockerFile": "Dockerfile",
-	"build": {
-		"args": {
-			"WORKSPACE": "${containerWorkspaceFolder}"
-		}
-	},
 	"features": {
 		"ghcr.io/dhoeric/features/google-cloud-cli:latest": {}
 	},
