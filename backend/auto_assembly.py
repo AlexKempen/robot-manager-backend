@@ -6,7 +6,13 @@ from typing import Callable, Iterable
 from flask import current_app as app, request
 
 from library.api import api_base, api_path
-from library.api.endpoints import assemblies, assembly_features, part_studios
+from library.api.endpoints import (
+    assemblies,
+    assembly_features,
+    part_studios,
+)
+
+SCRIPT_PATH = pathlib.Path("backend/scripts")
 
 
 def execute():
@@ -19,7 +25,7 @@ def execute():
     if body == None:
         return {"error": "A request body is required."}
 
-    api = api_base.ApiToken(token, logging=True)
+    api = api_base.ApiToken(token, logging=False)
 
     assembly_path = api_path.make_element_path_from_obj(body)
     document_path = assembly_path.path
@@ -72,6 +78,7 @@ def execute():
         new_instances,
     )
 
+    app.logger.info("Success")
     return {"message": "Success"}
 
 
@@ -146,7 +153,7 @@ def evalute_part_studios(
 
 
 def evalute_part(api: api_base.Api, part_studio_path: api_path.ElementPath) -> dict:
-    with pathlib.Path("backend/scripts/parseBase.fs").open() as file:
+    with (SCRIPT_PATH / pathlib.Path("parseBase.fs")).open() as file:
         return part_studios.evaluate_feature_script(api, part_studio_path, file.read())
 
 
@@ -169,7 +176,7 @@ def evaluate_targets(
 
 
 def evalute_target(api: api_base.Api, assembly_path: api_path.ElementPath) -> dict:
-    with pathlib.Path("backend/scripts/parseTarget.fs").open() as file:
+    with (SCRIPT_PATH / pathlib.Path("parseTarget.fs")).open() as file:
         return part_studios.evaluate_feature_script(api, assembly_path, file.read())
 
 

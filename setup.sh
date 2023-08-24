@@ -1,3 +1,5 @@
 #! /bin/bash
 pip install --upgrade pip
-pip install -r src/requirements.txt
+cd src
+pip install -r requirements.txt
+pip install ./robot-code

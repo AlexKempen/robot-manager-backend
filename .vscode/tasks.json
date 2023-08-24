@@ -6,10 +6,16 @@
         {
             "label": "Pull assembly scripts",
             "type": "shell",
-            "command": "python -m backend.tools.pull_scripts",
+            "command": "cd python -m tools.pull_scripts",
             "group": {
                 "kind": "build"
             }
+        },
+        {
+            "label": "Launch server",
+            "type": "shell",
+            "command": "python -m backend.server",
+            "problemMatcher": []
         }
     ]
 }

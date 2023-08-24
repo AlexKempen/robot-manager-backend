@@ -4,7 +4,7 @@ import pathlib
 
 from library.api import api_base, conf
 from library.api.endpoints import documents, feature_studios
-from library.parse import transform
+from library.transform import transform
 
 
 def insert_code(function: str, code: list[str]) -> str:

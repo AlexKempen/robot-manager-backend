@@ -82,13 +82,13 @@ const toJson = function(arg) returns string
 
         if (attribute["type"] as string == "MATE")
         {
-            const parsed = match(attribute.url, ".*/(\\w+)/w/(\\w+)/e/(\\w+)");
-
+            const path = attribute.elementPath;
             const value = {
                     "mateId" : parseMateConnectorId(context, base),
-                    "documentId" : parsed.captures[1],
-                    "workspaceId" : parsed.captures[2],
-                    "elementId" : parsed.captures[3]
+                    "documentId" : path.documentId,
+                    "workspaceOrVersion" : path.workspaceOrVersion,
+                    "workspaceId" : path.workspaceId,
+                    "elementId" : path.elementId
                 };
             result.mates = append(result.mates, value);
         }
