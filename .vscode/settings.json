@@ -1,0 +1,51 @@
+{
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "bash"
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "editor.formatOnSave": true,
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "files.associations": {
+        "*.json": "jsonc"
+    },
+    "files.eol": "\n",
+    "cSpell.allowCompoundWords": true,
+    "cSpell.ignorePaths": [
+        "build",
+        ".git",
+        ".vscode",
+        ".devcontainer",
+        "conf.py"
+    ],
+    "cSpell.words": [
+        "apikey",
+        "creds",
+        "ctxt",
+        "digestmod",
+        "endc",
+        "exportstl",
+        "FEATURESTUDIO",
+        "featurestudioids",
+        "featurestudios",
+        "fsclient",
+        "fsconstants",
+        "levelname",
+        "Onshape",
+        "UNCONFIGURABLE",
+        "updateversion",
+        "updateversions"
+    ],
+    "cSpell.flagWords": [
+        "coincentric",
+        "expresion"
+    ],
+    "python.analysis.extraPaths": [
+        "library/**"
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.defaultInterpreterPath": "/usr/local/bin/python"
+}

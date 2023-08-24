@@ -1,0 +1,31 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/debian
+{
+	"name": "Linux",
+	"dockerFile": "Dockerfile",
+	"build": {
+		"args": {
+			"WORKSPACE": "${containerWorkspaceFolder}"
+		}
+	},
+	"features": {
+		"ghcr.io/dhoeric/features/google-cloud-cli:latest": {}
+	},
+	"postCreateCommand": "bash setup.sh",
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"streetsidesoftware.code-spell-checker",
+				"redhat.vscode-yaml",
+				"yzhang.markdown-all-in-one",
+				"ms-python.python",
+				"GoogleCloudTools.cloudcode",
+				"ms-python.black-formatter"
+			]
+		}
+	},
+	"forwardPorts": [
+		8080
+	]
+}
