@@ -78,7 +78,6 @@ def execute():
         new_instances,
     )
 
-    app.logger.info("Success")
     return {"message": "Success"}
 
 
@@ -214,7 +213,6 @@ def is_mate_unused(instance: dict, mate_id: str, assembly_features: dict) -> boo
                 query["featureId"] == mate_id and query["path"][0] == instance["id"]
                 for query in queries
             ):
-                app.logger.info("Used mate")
                 return False
     return True
 
@@ -224,7 +222,6 @@ def is_fastened_mate(feature: dict) -> bool:
         return False
     for parameter in feature["parameters"]:
         if parameter["parameterId"] == "mateType":
-            app.logger.info("mateType")
             if parameter["value"] != "FASTENED":
                 return False
             else:
