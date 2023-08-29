@@ -1,6 +1,4 @@
 from concurrent import futures
-import pathlib
-import dataclasses
 from typing import Callable, Iterable
 
 from flask import current_app as app, request
@@ -11,9 +9,6 @@ from library.api.endpoints import (
     assembly_features,
 )
 from backend.common import assembly_data, setup, evaluate
-
-
-SCRIPT_PATH = pathlib.Path("backend/scripts")
 
 
 def execute():
@@ -28,7 +23,7 @@ def execute():
 
     with futures.ThreadPoolExecutor(2) as executor:
         assembly_future = executor.submit(
-            assembly_data.assembly_data,
+            assembly_data.assembly,
             api,
             assembly_path,
         )
@@ -38,10 +33,10 @@ def execute():
 
     assembly = assembly_future.result()
 
-    part_studio_paths = assembly.extract_part_studios()
+    part_studio_paths = assembly.extract_unique_part_studios()
     parts_to_mates_dict = assembly.get_parts_to_mates_dict()
 
-    part_maps = evaluate.evalute_part_studios(api, part_studio_paths)
+    part_maps = evaluate.evalute_auto_assembly_parts(api, part_studio_paths)
     targets_to_mate_connectors = evaluate.evaluate_targets(
         api, part_maps.mates_to_targets
     )
@@ -59,7 +54,7 @@ def execute():
         part_maps,
         targets_to_mate_connectors,
     )
-    updated_assembly = assembly_data.AssemblyData(
+    updated_assembly = assembly_data.Assembly(
         assemblies.get_assembly(api, assembly_path, include_mate_connectors=True),
         assembly_path,
     )
@@ -80,7 +75,7 @@ def execute():
 
 
 def get_instances_to_mates(
-    assembly: assembly_data.AssemblyData,
+    assembly: assembly_data.Assembly,
     assembly_features: dict,
     parts_to_mates: dict[api_path.PartPath, list[str]],
 ) -> list[tuple[dict, str]]:
@@ -138,7 +133,7 @@ def get_query_parameter(feature: dict) -> list[dict]:
 
 def get_part_mate_ids(
     instance: dict,
-    assembly: assembly_data.AssemblyData,
+    assembly: assembly_data.Assembly,
     part_to_mates: dict[api_path.PartPath, list[str]],
 ) -> list[str]:
     """Fetches the mate ids of an instance.
@@ -215,35 +210,21 @@ def add_mate(
     targets_to_mate_connectors: dict[str, str],
     new_instances: list[dict],
 ) -> futures.Future | None:
-    if mate_id in part_maps.mates_to_targets and mate_id in targets_to_mate_connectors:
-        target_path = part_maps.mates_to_targets[mate_id]
-        target_mate_connector = targets_to_mate_connectors[mate_id]
-        new_instance = find_new_instance(new_instances, assembly, target_path)
-        queries = (
-            assembly_features.part_studio_mate_connector_query(
-                new_instance["id"], target_mate_connector
-            ),
-            assembly_features.part_studio_mate_connector_query(instance["id"], mate_id),
-        )
-        feature = assembly_features.fasten_mate("Fasten mate", queries)
-        return executor.submit(assemblies.add_feature, api, assembly.path, feature)
-    elif mate_id in part_maps.mirror_mates:
-        start_mate_id = part_maps.mirror_mates[mate_id]
-        target_path = assembly.make_path(instance)
-        new_instance = find_new_instance(new_instances, assembly, target_path)
-        queries = (
-            assembly_features.part_studio_mate_connector_query(
-                new_instance["id"], start_mate_id
-            ),
-            assembly_features.part_studio_mate_connector_query(instance["id"], mate_id),
-        )
-        feature = assembly_features.fasten_mate("Mirror mate", queries)
-    elif mate_id in part_maps.origin_mirror_mates:
-        queries = ({}, {})
-        feature = assembly_features.fasten_mate("Mirror mate", queries)
-    else:
+    if (
+        mate_id not in part_maps.mates_to_targets
+        or mate_id not in targets_to_mate_connectors
+    ):
         return None
-
+    target_path = part_maps.mates_to_targets[mate_id]
+    target_mate_connector = targets_to_mate_connectors[mate_id]
+    new_instance = find_new_instance(new_instances, assembly, target_path)
+    queries = (
+        assembly_features.part_studio_mate_connector_query(
+            new_instance["id"], target_mate_connector
+        ),
+        assembly_features.part_studio_mate_connector_query(instance["id"], mate_id),
+    )
+    feature = assembly_features.fasten_mate("Fasten mate", queries)
     return executor.submit(assemblies.add_feature, api, assembly.path, feature)
 
 

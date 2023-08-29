@@ -1,36 +1,51 @@
 from __future__ import annotations
-from typing import Self
+from typing import Any, Iterable, Self
 from library.api import api_path, api_base
 from library.api.endpoints import assemblies
 
 
-class AssemblyData:
+class Assembly:
     """Contains information from Onshape about an assembly."""
 
     def __init__(self, assembly_data: dict, path: api_path.ElementPath) -> None:
         self.assembly_data = assembly_data
         self.path = path
 
-    def get_parts(self) -> dict:
-        return self.assembly_data["parts"]
-        # result = self.assembly_data.get("parts", None)
-        # if not result:
-        #     raise RuntimeError("Unexpected response from Onshape.")
-        # return result
+    def get_parts(self) -> list:
+        return self.assembly_data.get("parts", [])
+
+    def get_part_from_instance(self, instance: dict) -> dict:
+        """Returns the part corresponding to a given instance.
+
+        The instance must be for a part.
+        """
+        return next(
+            part
+            for part in self.get_parts()
+            if are_keys_equal(
+                instance,
+                part,
+                "partId",
+                "configuration",
+                "documentId",
+                "elementId",
+                "documentVersion",
+            )
+        )
 
     def get_instances(self) -> list[dict]:
-        return self.assembly_data["rootAssembly"]["instances"]
+        return self.assembly_data["rootAssembly"].get("instances", [])
 
-    def extract_part_studios(self) -> set[api_path.ElementPath]:
+    def extract_unique_part_studios(self) -> set[api_path.ElementPath]:
         """Constructs a set of unique part studio paths in the assembly."""
-        return set(self.make_path(part) for part in self.get_parts())
+        return set(self.resolve_path(part) for part in self.get_parts())
 
-    def get_parts_to_mates_dict(self) -> dict[api_path.PartPath, list[str]]:
-        """Constructs a dict which maps part paths to the unique mate ids owned by each part."""
+    def get_parts_to_mate_ids(self) -> dict[api_path.PartPath, list[str]]:
+        """Constructs a dict which maps part paths to a list of the unique mate ids owned by each part."""
 
         result = {}
         for part in self.get_parts():
-            part_path = api_path.PartPath(self.make_path(part), part["partId"])
+            part_path = api_path.PartPath(self.resolve_path(part), part["partId"])
             for mate_connector in part.get("mateConnectors", []):
                 mate_id = mate_connector["featureId"]
                 values = result.get(part_path, [])
@@ -38,7 +53,7 @@ class AssemblyData:
                 result[part_path] = values
         return result
 
-    def make_path(self, part: dict) -> api_path.ElementPath:
+    def resolve_path(self, part: dict) -> api_path.ElementPath:
         """Constructs a path to an instance or a part.
 
         Arg:
@@ -55,10 +70,59 @@ class AssemblyData:
         )
 
 
-def assembly_data(
-    api: api_base.Api, assembly_path: api_path.ElementPath
-) -> AssemblyData:
+def assembly(api: api_base.Api, assembly_path: api_path.ElementPath) -> Assembly:
     assembly_data = assemblies.get_assembly(
         api, assembly_path, include_mate_features=True, include_mate_connectors=True
     )
-    return AssemblyData(assembly_data, assembly_path)
+    return Assembly(assembly_data, assembly_path)
+
+
+def are_keys_equal(first: dict, second: dict, *keys: Iterable[str]) -> bool:
+    return all(first.get(key, None) == second.get(key, None) for key in keys)
+
+
+class AssemblyFeatures:
+    def __init__(self, features: dict) -> None:
+        self.features = features
+
+    def get_features(self) -> list[dict]:
+        return self.features.get("features", [])
+
+    def get_fastened_mates(self) -> Iterable[dict]:
+        for feature in self.get_features():
+            if is_fastened_mate(feature):
+                yield feature
+
+    def is_mate_connector_used(self, instance: dict, mate_id: str) -> bool:
+        """Returns true if the mate connector is already used in a fastened mate feature."""
+        # We could remove O(N^2) algo by returning a dict mapping instance ids to used mate connectors
+        for feature in self.get_fastened_mates():
+            queries = get_parameter(feature, "mateConnectorsQuery")
+            if any(
+                query["featureId"] == mate_id and query["path"][0] == instance["id"]
+                for query in queries
+            ):
+                return True
+        return False
+
+
+def is_fastened_mate(feature: dict) -> bool:
+    """Returns true if feature is a fastened mate."""
+    if feature.get("featureType", None) != "mate":
+        return False
+    mate_type = get_parameter(feature, "mateType")
+    return mate_type != None and mate_type.get("value", None) == "FASTENED"
+
+
+def get_parameter(feature: dict, parameter_id: str) -> Any:
+    for parameter in feature.get("parameters", []):
+        if parameter.get("parameterId", None) == parameter_id:
+            return parameter
+    raise ValueError("Failed to find parameter {}".format(parameter_id))
+
+
+def assembly_features(
+    api: api_base.Api, assembly_path: api_path.ElementPath
+) -> AssemblyFeatures:
+    assembly_data = assemblies.get_assembly_features(api, assembly_path)
+    return AssemblyFeatures(assembly_data)
