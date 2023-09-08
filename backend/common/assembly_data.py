@@ -40,7 +40,7 @@ class Assembly:
         """Constructs a set of unique part studio paths in the assembly."""
         return set(self.resolve_path(part) for part in self.get_parts())
 
-    def get_parts_to_mate_ids(self) -> dict[api_path.PartPath, list[str]]:
+    def get_part_paths_to_mate_ids(self) -> dict[api_path.PartPath, list[str]]:
         """Constructs a dict which maps part paths to a list of the unique mate ids owned by each part."""
 
         result = {}
@@ -53,20 +53,36 @@ class Assembly:
                 result[part_path] = values
         return result
 
-    def resolve_path(self, part: dict) -> api_path.ElementPath:
-        """Constructs a path to an instance or a part.
+    def resolve_part_path(self, instance_or_part: dict) -> api_path.PartPath:
+        """Constructs a part path to a given instance or part.
 
-        Arg:
-            part: An instance or part in an assembly.
+        Args:
+            instance_or_part: An instance or part in an assembly.
         """
-        if "documentVersion" in part:
+        return api_path.PartPath(
+            self.resolve_path(instance_or_part), instance_or_part["partId"]
+        )
+
+    def resolve_path(self, instance_or_part: dict) -> api_path.ElementPath:
+        """Constructs an element path from a given instance or a part.
+
+        Args:
+            instance_or_part: An instance or part in an assembly.
+        """
+        if "documentVersion" in instance_or_part:
             return api_path.ElementPath(
-                api_path.DocumentPath(part["documentId"], part["documentVersion"], "v"),
-                part["elementId"],
+                api_path.DocumentPath(
+                    instance_or_part["documentId"],
+                    instance_or_part["documentVersion"],
+                    "v",
+                ),
+                instance_or_part["elementId"],
             )
         return api_path.ElementPath(
-            api_path.DocumentPath(part["documentId"], self.path.path.workspace_id, "w"),
-            part["elementId"],
+            api_path.DocumentPath(
+                instance_or_part["documentId"], self.path.path.workspace_id, "w"
+            ),
+            instance_or_part["elementId"],
         )
 
 

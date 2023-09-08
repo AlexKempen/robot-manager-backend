@@ -22,5 +22,8 @@
 	},
 	"forwardPorts": [
 		8080
-	]
+	],
+	"containerEnv": {
+		
+	}
 }

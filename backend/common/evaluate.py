@@ -50,32 +50,20 @@ def evaluate_assembly_mirror_part(
 
 
 @dataclasses.dataclass
-class EvaluateAssemblyMirrorResult:
+class AssemblyMirrorEvaluateData:
     """
     Attributes:
-        base_to_target_mates: A dict mapping base ids to target ids.
-        origin_base_mates: A set of mate ids representing parts to mirror.
+        base_to_target_mates: A dict mapping base mate ids to target mate ids.
+        origin_base_mates: A set of assembly mate ids found in each part studio.
     """
 
     base_to_target_mates: dict[str, str]
     origin_base_mates: set[str]
 
-    def instances_to_instantiate(
-        self, mates_to_parts: dict[str, api_path.PartPath]
-    ) -> dict[api_path.PartPath, int]:
-        """Generates a dict of part paths representing parts which need to be copied.
-
-        Returns:
-            A dict mapping part paths to the number of times that part path should be instantiated.
-        """
-        base_mate_ids = list(self.origin_base_mates)
-        base_mate_ids.extend(self.base_to_target_mates.values())
-        return dict()
-
 
 def evaluate_assembly_mirror_parts(
     api: api_base.Api, part_studio_paths: Iterable[api_path.ElementPath]
-):
+) -> AssemblyMirrorEvaluateData:
     with futures.ThreadPoolExecutor() as executor:
         threads = [
             executor.submit(evaluate_assembly_mirror_part, api, part_studio_path)
@@ -97,7 +85,7 @@ def evaluate_assembly_mirror_parts(
                         "targetMateId"
                     ]
 
-        return EvaluateAssemblyMirrorResult(base_to_target_mates, origin_base_mates)
+        return AssemblyMirrorEvaluateData(base_to_target_mates, origin_base_mates)
 
 
 @dataclasses.dataclass

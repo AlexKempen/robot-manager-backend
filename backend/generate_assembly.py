@@ -20,7 +20,7 @@ def execute():
     id = assemblies.make_assembly(api, part_studio_path.path, name)["id"]
     assembly_path = api_path.ElementPath(part_studio_path.path, id)
 
-    assemblies.add_part_studio_to_assembly(api, assembly_path, part_studio_path)
+    assemblies.add_parts_to_assembly(api, assembly_path, part_studio_path)
     assembly = assemblies.get_assembly(api, assembly_path)
     instance_ids = [
         instance["id"] for instance in assembly["rootAssembly"]["instances"]
