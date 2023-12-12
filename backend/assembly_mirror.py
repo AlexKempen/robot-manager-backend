@@ -1,11 +1,12 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from concurrent import futures
-import itertools
 from typing import Iterable
 
 from flask import current_app as app, request
 
 from library.api import api_base, api_path
+from library.api.endpoints import assemblies
 from backend.common import assembly_data, setup, evaluate
 
 
@@ -23,7 +24,6 @@ class AssemblyMirrorCandidate:
         assembly: assembly_data.Assembly,
         assembly_features: assembly_data.AssemblyFeatures,
     ) -> None:
-        """ """
         self.instance = instance
         self.part = assembly.get_part_from_instance(instance)
         self.part_path = assembly.resolve_part_path(instance)
@@ -43,6 +43,41 @@ class AssemblyMirrorCandidate:
         )
 
 
+class AssemblyMirrorPart(ABC):
+    """Represents a part which assembly mirror is being applied to."""
+
+    def __init__(self, part_path: api_path.PartPath) -> None:
+        self.part_path = part_path
+
+    def add_to_assembly(
+        self, api: api_base.Api, assembly_path: api_path.ElementPath
+    ) -> None:
+        assemblies.add_parts_to_assembly(api, assembly_path, self.part_path)
+
+    def find_match(self, instance_dict: dict[api_path.PartPath, dict]) -> dict:
+        """Returns the an assembled instance which matches this part."""
+        # TODO: Atomicity error handling
+        return instance_dict[self.part_path]
+
+    @abstractmethod
+    def do_fasten(self) -> None:
+        ...
+
+
+class OriginMirrorPart(AssemblyMirrorPart):
+    """An assembly mirror part which is being fastened to the origin."""
+
+    def __init__(self) -> None:
+        pass
+
+
+class CenterMirrorPart(AssemblyMirrorPart):
+    """An assembly mirror part which is being fastened to a copy."""
+
+    def __init__(self) -> None:
+        pass
+
+
 class AssemblyMirror:
     """Represents the execution of a single assembly mirror operation."""
 
@@ -57,10 +92,7 @@ class AssemblyMirror:
         evaluate_result = evaluate.evaluate_assembly_mirror_parts(
             self.api, part_studios
         )
-
-        # create_assembly_mirror_parts(
-        #     candidates, evaluate_result
-        # )
+        self._create_assembly_mirror_parts(candidates, *evaluate_result)
 
     def _init_assemblies(self) -> None:
         with futures.ThreadPoolExecutor(2) as executor:
@@ -123,25 +155,37 @@ class AssemblyMirror:
             if self._has_used_origin_mate(candidate, origin_base_mates)
         )
 
-    def _elibible_for_standard_mirror(
+    def _is_eligible_for_origin_mirror(
+        self,
+        candidate: AssemblyMirrorCandidate,
+        used_origin_paths: set[api_path.PartPath],
+        origin_base_mates: set[str],
+    ) -> bool:
+        if candidate.part_path in used_origin_paths:
+            return False
+        origin_mate_intersection = origin_base_mates.intersection(
+            candidate.mate_connectors.keys()
+        )
+        return len(origin_mate_intersection) >= 1
+
+    def _is_elibible_for_center_mirror(
         self, candidate: AssemblyMirrorCandidate, base_to_target_mates: dict[str, str]
     ) -> bool:
         """Returns True if the candidate is eligible for assembly mirror.
 
         Formally, this means the candidate has two unused mates matching a key-value pair in base_to_target_mates.
         """
-        # standard_mate_intersection = set(
-        #     itertools.chain(evaluate_result.base_to_target_mates.items())
-        # ).intersection(mate_ids)
-        # if len(standard_mate_intersection) == 2:
-        #     # Handle mirror mate
-        #     continue
-        return True
+        return any(
+            not candidate.mate_connectors.get(base_mate_id, True)
+            and not candidate.mate_connectors.get(target_mate_id, True)
+            for base_mate_id, target_mate_id in base_to_target_mates
+        )
 
     def _create_assembly_mirror_parts(
         self,
         candidates: list[AssemblyMirrorCandidate],
-        evaluate_result: evaluate.AssemblyMirrorEvaluateData,
+        base_to_target_mates: dict[str, str],
+        origin_base_mates: set[str],
     ) -> list[dict]:
         """Forms the list of assembly mirror candidates into a list of AssemblyMirrorParts to be assembled.
 
@@ -150,40 +194,21 @@ class AssemblyMirror:
         which is fastened to the origin.
         2. For a regular candidate, the instance is trimmed if either mate is already used (which handles both base and mirrored instances).
         """
-
-        # Trim instance_paths based on parts_to_mates_dict and the dict returned by evaluate
-        # More specifically:
-        # For each instance in instance_paths:
-        # Iterate over the mate ids in evalute_result.
-        # If necessary, trim the candidate.
-        # Otherwise, construct the mate and add it.
         used_origin_paths = self._collect_used_origin_paths(
-            candidates, evaluate_result.origin_base_mates
+            candidates, origin_base_mates
         )
 
         for candidate in candidates:
-            # part_path = assembly.resolve_part_path(instance)
-            # mate_ids: list[str] = parts_to_mate_ids.get(part_path, [])
-            if candidate.part_path not in used_origin_paths:
-                origin_mate_intersection = (
-                    evaluate_result.origin_base_mates.intersection(
-                        candidate.mate_connectors.keys()
-                    )
-                )
-                if len(origin_mate_intersection) >= 1:
-                    # Handle origin mate
-                    continue
-            elif self._elibible_for_standard_mirror(
-                candidate, evaluate_result.base_to_target_mates
+            # Problem: these predicates don't say what mate_ids to use
+            if self._is_eligible_for_origin_mirror(
+                candidate, used_origin_paths, origin_base_mates
             ):
-                pass
-
-            # standard_mate_intersection = set(
-            #     itertools.chain(evaluate_result.base_to_target_mates.items())
-            # ).intersection(mate_ids)
-            # if len(standard_mate_intersection) == 2:
-            #     # Handle mirror mate
-            #     continue
+                # Handle origin mirror - duplicate part?
+                # Generate a matcher function and store the mate_ids, I guess
+                continue
+            elif self._is_elibible_for_center_mirror(candidate, base_to_target_mates):
+                # Handle standard mirror
+                continue
 
         return []
 

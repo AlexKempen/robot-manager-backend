@@ -49,21 +49,15 @@ def evaluate_assembly_mirror_part(
     )
 
 
-@dataclasses.dataclass
-class AssemblyMirrorEvaluateData:
-    """
-    Attributes:
-        base_to_target_mates: A dict mapping base mate ids to target mate ids.
-        origin_base_mates: A set of assembly mate ids found in each part studio.
-    """
-
-    base_to_target_mates: dict[str, str]
-    origin_base_mates: set[str]
-
-
 def evaluate_assembly_mirror_parts(
     api: api_base.Api, part_studio_paths: Iterable[api_path.ElementPath]
-) -> AssemblyMirrorEvaluateData:
+) -> tuple[dict[str, str], set[str]]:
+    """Runs the assembly mirror scripts against the given part_studio_paths and aggregates the results.
+
+    Returns a tuple with two elements:
+        base_to_target_mates: A dict mapping base mate ids to target mate ids.
+        origin_base_mates: A set of origin base mate ids.
+    """
     with futures.ThreadPoolExecutor() as executor:
         threads = [
             executor.submit(evaluate_assembly_mirror_part, api, part_studio_path)
@@ -85,7 +79,7 @@ def evaluate_assembly_mirror_parts(
                         "targetMateId"
                     ]
 
-        return AssemblyMirrorEvaluateData(base_to_target_mates, origin_base_mates)
+        return (base_to_target_mates, origin_base_mates)
 
 
 @dataclasses.dataclass
