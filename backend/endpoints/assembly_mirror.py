@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 from concurrent import futures
 from typing import Iterable
 
-from flask import current_app as app, request
-
 from library.api import api_base, api_path
 from library.api.endpoints import assemblies
 from backend.common import assembly_data, setup, evaluate
@@ -27,7 +25,7 @@ class AssemblyMirrorCandidate:
         self.instance = instance
         self.part = assembly.get_part_from_instance(instance)
         self.part_path = assembly.resolve_part_path(instance)
-        self.element_path = self.part_path.path
+        self.element_path = self.part_path.to_element_path()
         self.mate_connectors = self._init_mate_connectors(assembly_features)
         self.all_used = all(self.mate_connectors.values())
 
@@ -213,16 +211,7 @@ class AssemblyMirror:
         return []
 
 
-def execute():
-    api = setup.create_api(request, logging=False)
-    if api == None:
-        return {"error": "An onshape oauth token is required."}
-
-    body = request.get_json()
-    if body == None:
-        return {"error": "A request body is required."}
-    assembly_path = api_path.make_element_path_from_obj(body)
-
+def execute(assembly_path: api_path.ElementPath):
+    api = setup.get_api()
     AssemblyMirror(api, assembly_path).execute()
-
     return {"message": "Success"}

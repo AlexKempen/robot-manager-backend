@@ -80,7 +80,7 @@ class Assembly:
             )
         return api_path.ElementPath(
             api_path.DocumentPath(
-                instance_or_part["documentId"], self.path.path.workspace_id, "w"
+                instance_or_part["documentId"], self.path.workspace_id, "w"
             ),
             instance_or_part["elementId"],
         )

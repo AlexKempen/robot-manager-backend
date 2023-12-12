@@ -9,4 +9,4 @@ setuptools.setup(
     packages=setuptools.find_namespace_packages(),
 )
 
-# setuptools.setup(name="robot_library", version="0.1", packages=["robot_library"])
+# setuptools.setup(name="backend", version="0.1", packages=[""])
