@@ -52,7 +52,7 @@ class AssemblyMirrorPart(ABC):
     def add_to_assembly(
         self, api: api_base.Api, assembly_path: api_path.ElementPath
     ) -> None:
-        assemblies.add_parts_to_assembly(api, assembly_path, self.part_path)
+        assemblies.add_part_to_assembly(api, assembly_path, self.part_path)
 
     def find_match(self, instance_dict: dict[api_path.PartPath, dict]) -> dict:
         """Returns the an assembled instance which matches this part."""
